@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  db:
+    # We use a mariadb image which supports both amd64 & arm64 architecture
+    image: mariadb:10.6.4-focal
+    # If you really want to use MySQL, uncomment the following line
+    #image: mysql:8.0.27
+    command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=somewordpress
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+      - MYSQL_PASSWORD=wordpress
+    expose:
+      - 3306
+      - 33060
+      
+  wordpress:
+    image: wordpress:latest
+    volumes:
+      - wp_data:/var/www/html
+    ports:
+      - 7002:80
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=wordpress
+      - WORDPRESS_DB_NAME=wordpress
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    
+    deploy:
+      replicas: 2 # Anzahl der Instanzen die gleichzeitig laufen sollen
+      update_config: # Die Konfiguration für das Update
+        order: start-first  # Die Reihenfolge in der die Instanzen geupdated werden sollen    
+        failure_action: rollback # Was soll passieren wenn ein Update fehlschlägt
+
+      rollback_config: # Die Konfiguration für das Rollback
+        parallelism: 1 # Wie viele Instanzen sollen gleichzeitig zurückgerollt werden
+        order: start-first # Die Reihenfolge in der die Instanzen zurückgerollt werden sollen
+
+      restart_policy: # Die Konfiguration für den Restart
+        condition: on-failure # Unter welchen Bedingungen soll ein Restart durchgeführt werden
+
+volumes:
+  db_data:
+  wp_data:
